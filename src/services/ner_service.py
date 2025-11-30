@@ -26,25 +26,38 @@ class NERService:
                 "spaCy is not installed. Install it with: uv pip install spacy && python -m spacy download en_core_web_lg"
             )
 
-        try:
-            self.nlp = spacy.load(model_name)
-        except OSError:
-            logger.warning(
-                f"Model {model_name} not found. Falling back to en_core_web_sm. "
-                "Install with: python -m spacy download en_core_web_lg"
-            )
+        # Try to load the model, with fallbacks
+        models_to_try = [model_name, "en_core_web_sm", "en_core_web_md"]
+        self.nlp = None
+        
+        for model in models_to_try:
             try:
-                self.nlp = spacy.load("en_core_web_sm")
-            except OSError:
-                raise ImportError(
-                    "spaCy model not found. Install with: python -m spacy download en_core_web_sm"
-                )
+                self.nlp = spacy.load(model)
+                logger.info(f"Loaded spaCy model: {model}")
+                break
+            except (OSError, IOError) as e:
+                if model == models_to_try[-1]:
+                    # Last model failed, log warning but don't raise
+                    # The service will use LLM fallback instead
+                    logger.warning(
+                        f"spaCy models not found. Tried: {models_to_try}. "
+                        f"Entity extraction will use LLM fallback. "
+                        f"To install: uv pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl"
+                    )
+                    self.nlp = None
+                else:
+                    logger.warning(f"Model {model} not found, trying next...")
+                    continue
 
         # Financial entity patterns
         self._setup_financial_patterns()
 
     def _setup_financial_patterns(self) -> None:
         """Setup custom patterns for financial entities."""
+        # Skip if model not loaded
+        if self.nlp is None:
+            return
+            
         # Add patterns for Indian financial terms
         patterns = [
             # RBI variations
@@ -67,6 +80,17 @@ class NERService:
         Returns:
             Dictionary with entity types as keys and lists of entities as values.
         """
+        # If model not loaded, return empty entities (will use LLM fallback)
+        if self.nlp is None:
+            logger.warning("spaCy model not available, returning empty entities (LLM will be used)")
+            return {
+                "companies": [],
+                "sectors": [],
+                "regulators": [],
+                "people": [],
+                "events": [],
+            }
+        
         doc = self.nlp(text)
 
         entities = {

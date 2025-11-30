@@ -55,15 +55,31 @@ async def ingest_news(article_input: NewsArticleInput):
             )
 
         article_id = final_state.get("article_id")
+        is_duplicate = final_state.get("is_duplicate", False)
+        
         if not article_id:
             raise HTTPException(status_code=500, detail="Failed to store article")
 
-        # Get stored article
+        # Small delay to ensure transaction is committed and visible across connections
+        import asyncio
+        await asyncio.sleep(0.2)
+
+        # Get stored article (or original if duplicate)
         sql_db = get_sql_db()
         article = await sql_db.get_article(article_id)
 
         if not article:
-            raise HTTPException(status_code=404, detail="Article not found after storage")
+            # Try once more after a brief delay
+            await asyncio.sleep(0.3)
+            article = await sql_db.get_article(article_id)
+            if not article:
+                # If it's a duplicate, the original might not be visible yet
+                # Log for debugging
+                logger.warning(f"Article {article_id} not found. Is duplicate: {is_duplicate}, Duplicate of: {final_state.get('duplicate_of_id')}")
+                raise HTTPException(
+                    status_code=404, 
+                    detail=f"Article not found after storage. Article ID: {article_id}, Is duplicate: {is_duplicate}"
+                )
 
         # Build response
         entities = await sql_db.get_entities(article_id)

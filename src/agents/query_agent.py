@@ -45,21 +45,23 @@ def query_agent(state: AgentState) -> AgentState:
         state["query_type"] = query_type
 
         # Run async query operations
-        try:
-            # Try to get existing event loop
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If loop is running, we need to use a different approach
-                # Create a new thread-safe event loop
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(asyncio.run, _process_query_async(state))
-                    future.result()
-            else:
-                loop.run_until_complete(_process_query_async(state))
-        except RuntimeError:
-            # No event loop exists, create a new one
-            asyncio.run(_process_query_async(state))
+        # Since LangGraph agents are sync but we need async DB operations,
+        # we'll use a thread pool to run the async code
+        import threading
+
+        def run_async_in_thread():
+            """Run async function in a new event loop in a thread."""
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            try:
+                new_loop.run_until_complete(_process_query_async(state))
+            finally:
+                new_loop.close()
+
+        # Run in a separate thread to avoid event loop conflicts
+        thread = threading.Thread(target=run_async_in_thread)
+        thread.start()
+        thread.join()
 
         return state
 
@@ -97,7 +99,9 @@ async def _process_query_async(state: AgentState) -> None:
     query_entities = state.get("query_entities", [])
     query_type = state.get("query_type", "theme")
 
-    sql_db = get_sql_db()
+    # Create new database connection for this event loop
+    from src.database.sql_db import SQLDatabase
+    sql_db = SQLDatabase()  # Create new instance for this event loop
     vector_db = get_vector_db()
     embedding_service = get_embedding_service()
     stock_mapper = get_stock_mapper()

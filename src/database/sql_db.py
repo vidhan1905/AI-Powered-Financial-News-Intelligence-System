@@ -28,6 +28,8 @@ class SQLDatabase:
             self.database_url,
             echo=False,
             future=True,
+            pool_pre_ping=True,  # Verify connections before using
+            pool_recycle=3600,   # Recycle connections after 1 hour
         )
         self.async_session_maker = async_sessionmaker(
             self.engine, class_=AsyncSession, expire_on_commit=False
