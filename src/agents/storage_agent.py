@@ -49,8 +49,16 @@ def storage_agent(state: AgentState) -> AgentState:
                     else:
                         logger.warning(
                             f"Duplicate article {duplicate_of_id} not found in SQL DB. "
-                            f"Treating as new article and storing."
+                            f"Removing orphaned embedding and treating as new article."
                         )
+                        # Remove orphaned embedding from vector DB
+                        vector_db = get_vector_db()
+                        try:
+                            vector_db.delete_by_id(duplicate_of_id)
+                            logger.debug(f"Removed orphaned embedding for article {duplicate_of_id}")
+                        except Exception as e:
+                            logger.warning(f"Could not remove orphaned embedding: {e}")
+                        
                         state["is_duplicate"] = False
                         state["duplicate_of_id"] = None
                 except Exception as e:

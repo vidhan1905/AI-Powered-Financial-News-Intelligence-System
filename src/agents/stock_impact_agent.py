@@ -30,12 +30,20 @@ def stock_impact_agent(state: AgentState) -> AgentState:
         stock_impacts = []
         processed_stocks = set()  # Avoid duplicates
 
+        logger.debug(f"Processing {len(entities)} entities for stock mapping")
         for entity in entities:
             entity_type = entity["entity_type"]
             entity_value = entity["entity_value"]
 
+            logger.debug(f"Mapping entity: type={entity_type}, value={entity_value}")
+
             # Map entity to stocks
             stock_mappings = stock_mapper.map_entity_to_stocks(entity_type, entity_value)
+            
+            if not stock_mappings:
+                logger.debug(f"No stock mappings found for {entity_type}: {entity_value}")
+            else:
+                logger.debug(f"Found {len(stock_mappings)} stock mappings for {entity_type}: {entity_value}")
 
             for stock_symbol, base_confidence, impact_type in stock_mappings:
                 # Avoid duplicate entries for same stock

@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     # Similarity Thresholds
     deduplication_threshold: float = 0.90
-    query_similarity_threshold: float = 0.75
+    query_similarity_threshold: float = 0.65  # Lowered to get more query results
 
     # Confidence Scores
     direct_mention_confidence: float = 1.0

@@ -139,16 +139,17 @@ class NERService:
             List of sectors mentioned.
         """
         sector_keywords = {
-            "banking": ["banking", "bank", "financial services", "lending"],
-            "it": ["it", "information technology", "software", "tech"],
-            "pharma": ["pharma", "pharmaceutical", "drug", "medicine"],
-            "auto": ["automobile", "auto", "vehicle", "car"],
-            "oil": ["oil", "petroleum", "refinery", "crude"],
-            "telecom": ["telecom", "telecommunication", "mobile", "network"],
-            "retail": ["retail", "retailer", "store", "shopping"],
-            "steel": ["steel", "iron", "metal"],
-            "cement": ["cement", "construction"],
-            "power": ["power", "energy", "electricity"],
+            "Banking": ["banking", "bank", "financial services", "lending", "financial sector"],
+            "IT": ["it", "information technology", "software", "tech", "technology sector"],
+            "Pharma": ["pharma", "pharmaceutical", "drug", "medicine", "pharmaceutical sector"],
+            "Auto": ["automobile", "auto", "vehicle", "car", "automotive"],
+            "Oil": ["oil", "petroleum", "refinery", "crude", "oil and gas"],
+            "Telecom": ["telecom", "telecommunication", "mobile", "network", "telecommunications"],
+            "Retail": ["retail", "retailer", "store", "shopping", "retail sector"],
+            "Steel": ["steel", "iron", "metal", "steel sector"],
+            "Cement": ["cement", "construction", "cement sector"],
+            "Power": ["power", "energy", "electricity", "power sector"],
+            "FMCG": ["fmcg", "fast moving consumer goods", "consumer goods"],
         }
 
         text_lower = text.lower()
@@ -157,7 +158,7 @@ class NERService:
         for sector, keywords in sector_keywords.items():
             if any(keyword in text_lower for keyword in keywords):
                 if sector not in found_sectors:
-                    found_sectors.append(sector.title())
+                    found_sectors.append(sector)
 
         return found_sectors
 

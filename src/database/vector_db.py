@@ -106,6 +106,8 @@ class VectorDatabase:
                     if similarity >= threshold:
                         metadata = results["metadatas"][0][i] if results["metadatas"] else {}
                         similar_articles.append((article_id, similarity, metadata))
+                    else:
+                        logger.debug(f"Article {article_id} below threshold: {similarity:.3f} < {threshold}")
 
             return similar_articles
         except Exception as e:

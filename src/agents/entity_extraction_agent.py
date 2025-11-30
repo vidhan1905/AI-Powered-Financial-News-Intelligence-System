@@ -6,6 +6,7 @@ from typing import Dict, List
 from src.core.state import AgentState
 from src.services.llm_service import get_llm_service
 from src.services.ner_service import get_ner_service
+from src.utils.text_processing import normalize_entity_type
 
 logger = logging.getLogger(__name__)
 
@@ -31,14 +32,16 @@ def entity_extraction_agent(state: AgentState) -> AgentState:
         ner_service = get_ner_service()
         entities_dict = ner_service.extract_entities(content)
 
-        # Convert to structured format
+        # Convert to structured format and normalize entity types
         entities = []
         for entity_type, entity_values in entities_dict.items():
+            # Normalize entity type to singular form
+            normalized_type = normalize_entity_type(entity_type)
             for entity_value in entity_values:
                 if entity_value:  # Skip empty values
                     entities.append(
                         {
-                            "entity_type": entity_type,
+                            "entity_type": normalized_type,
                             "entity_value": entity_value,
                             "confidence": 0.9,  # Default confidence for NER
                         }
@@ -50,11 +53,13 @@ def entity_extraction_agent(state: AgentState) -> AgentState:
             llm_service = get_llm_service()
             llm_entities = llm_service.extract_entities(content)
             for entity_type, entity_values in llm_entities.items():
+                # Normalize entity type to singular form
+                normalized_type = normalize_entity_type(entity_type)
                 for entity_value in entity_values:
                     if entity_value:
                         entities.append(
                             {
-                                "entity_type": entity_type,
+                                "entity_type": normalized_type,
                                 "entity_value": entity_value,
                                 "confidence": 0.85,  # Slightly lower for LLM
                             }

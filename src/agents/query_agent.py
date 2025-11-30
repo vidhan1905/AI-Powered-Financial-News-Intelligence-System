@@ -11,6 +11,7 @@ from src.database.vector_db import get_vector_db
 from src.services.embedding_service import get_embedding_service
 from src.services.ner_service import get_ner_service
 from src.services.stock_mapper import get_stock_mapper
+from src.utils.text_processing import normalize_entity_type
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,10 @@ def query_agent(state: AgentState) -> AgentState:
         query_entities_dict = ner_service.extract_entities(query)
         query_entities = []
         for entity_type, entity_values in query_entities_dict.items():
+            # Normalize entity type to singular form
+            normalized_type = normalize_entity_type(entity_type)
             for entity_value in entity_values:
-                query_entities.append({"entity_type": entity_type, "entity_value": entity_value})
+                query_entities.append({"entity_type": normalized_type, "entity_value": entity_value})
 
         state["query_entities"] = query_entities
 
@@ -83,7 +86,15 @@ def _determine_query_type(query_entities: List[Dict]) -> str:
     """
     entity_types = [e["entity_type"] for e in query_entities]
 
-    if "companies" in entity_types:
+    # Check for normalized (singular) types
+    if "company" in entity_types:
+        return "company"
+    elif "sector" in entity_types:
+        return "sector"
+    elif "regulator" in entity_types:
+        return "regulator"
+    # Also check for plural forms (backward compatibility)
+    elif "companies" in entity_types:
         return "company"
     elif "sectors" in entity_types:
         return "sector"
@@ -117,6 +128,8 @@ async def _process_query_async(state: AgentState) -> None:
         n_results=20,
         threshold=settings.query_similarity_threshold,
     )
+    
+    logger.debug(f"Vector DB search found {len(similar_articles)} similar articles (threshold: {settings.query_similarity_threshold})")
 
     # Get article details from SQL DB
     article_ids = [article_id for article_id, _, _ in similar_articles]
@@ -130,10 +143,12 @@ async def _process_query_async(state: AgentState) -> None:
     if query_type == "company":
         # Expand to include sector news
         for entity in query_entities:
-            if entity["entity_type"] == "companies":
+            # Handle both normalized (singular) and plural forms
+            entity_type = entity["entity_type"]
+            if entity_type in ["company", "companies"]:
                 company_name = entity["entity_value"]
-                # Get direct mentions
-                direct_articles = await sql_db.get_articles_by_entity("companies", company_name)
+                # Get direct mentions - use normalized type
+                direct_articles = await sql_db.get_articles_by_entity("company", company_name)
                 for article in direct_articles:
                     if article.id not in articles_by_id:
                         articles_by_id[article.id] = article
@@ -148,9 +163,10 @@ async def _process_query_async(state: AgentState) -> None:
     elif query_type == "sector":
         # Get all sector-related articles
         for entity in query_entities:
-            if entity["entity_type"] == "sectors":
+            entity_type = entity["entity_type"]
+            if entity_type in ["sector", "sectors"]:
                 sector = entity["entity_value"]
-                sector_articles = await sql_db.get_articles_by_entity("sectors", sector)
+                sector_articles = await sql_db.get_articles_by_entity("sector", sector)
                 for article in sector_articles:
                     if article.id not in articles_by_id:
                         articles_by_id[article.id] = article
@@ -158,9 +174,10 @@ async def _process_query_async(state: AgentState) -> None:
     elif query_type == "regulator":
         # Get regulator-specific articles
         for entity in query_entities:
-            if entity["entity_type"] == "regulators":
+            entity_type = entity["entity_type"]
+            if entity_type in ["regulator", "regulators"]:
                 regulator = entity["entity_value"]
-                regulator_articles = await sql_db.get_articles_by_entity("regulators", regulator)
+                regulator_articles = await sql_db.get_articles_by_entity("regulator", regulator)
                 for article in regulator_articles:
                     if article.id not in articles_by_id:
                         articles_by_id[article.id] = article

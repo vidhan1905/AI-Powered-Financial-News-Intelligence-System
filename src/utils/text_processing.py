@@ -73,3 +73,28 @@ def normalize_company_name(name: str) -> str:
 
     return name
 
+
+def normalize_entity_type(entity_type: str) -> str:
+    """Normalize entity type from plural to singular form.
+
+    Args:
+        entity_type: Entity type (can be plural or singular).
+
+    Returns:
+        Normalized singular entity type.
+    """
+    if not entity_type:
+        return entity_type
+
+    # Mapping from plural to singular
+    mapping = {
+        "companies": "company",
+        "sectors": "sector",
+        "regulators": "regulator",
+        "people": "person",
+        "events": "event",
+    }
+
+    entity_lower = entity_type.lower()
+    return mapping.get(entity_lower, entity_lower)
+
