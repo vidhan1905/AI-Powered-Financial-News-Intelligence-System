@@ -4,7 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, String, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import selectinload
 
@@ -197,6 +197,8 @@ class SQLDatabase:
         self, entity_type: str, entity_value: str, limit: int = 50
     ) -> List[NewsArticle]:
         """Get articles containing a specific entity.
+        
+        Uses case-insensitive matching and partial matching for better results.
 
         Args:
             entity_type: Entity type.
@@ -207,16 +209,35 @@ class SQLDatabase:
             List of NewsArticle objects.
         """
         async with self.get_session() as session:
+            # Normalize entity value for matching (case-insensitive)
+            entity_value_lower = entity_value.lower().strip()
+            
+            # Try exact case-insensitive match first
             result = await session.execute(
                 select(NewsArticle)
                 .join(Entity)
                 .where(Entity.entity_type == entity_type)
-                .where(Entity.entity_value == entity_value)
+                .where(func.lower(Entity.entity_value) == entity_value_lower)
                 .where(NewsArticle.is_duplicate == False)
                 .order_by(NewsArticle.timestamp.desc())
                 .limit(limit)
             )
-            return list(result.scalars().all())
+            articles = list(result.scalars().all())
+            
+            # If no exact match, try partial matching (entity_value contains query)
+            if not articles:
+                result = await session.execute(
+                    select(NewsArticle)
+                    .join(Entity)
+                    .where(Entity.entity_type == entity_type)
+                    .where(func.lower(Entity.entity_value).contains(entity_value_lower))
+                    .where(NewsArticle.is_duplicate == False)
+                    .order_by(NewsArticle.timestamp.desc())
+                    .limit(limit)
+                )
+                articles = list(result.scalars().all())
+            
+            return articles
 
     async def get_recent_articles(self, limit: int = 50) -> List[NewsArticle]:
         """Get recent non-duplicate articles.

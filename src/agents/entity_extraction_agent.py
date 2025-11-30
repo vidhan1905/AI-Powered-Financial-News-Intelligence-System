@@ -34,36 +34,51 @@ def entity_extraction_agent(state: AgentState) -> AgentState:
 
         # Convert to structured format and normalize entity types
         entities = []
+        entity_set = set()  # Track unique entities to avoid duplicates
         for entity_type, entity_values in entities_dict.items():
             # Normalize entity type to singular form
             normalized_type = normalize_entity_type(entity_type)
             for entity_value in entity_values:
                 if entity_value:  # Skip empty values
-                    entities.append(
-                        {
-                            "entity_type": normalized_type,
-                            "entity_value": entity_value,
-                            "confidence": 0.9,  # Default confidence for NER
-                        }
-                    )
-
-        # Use LLM for complex entity extraction if needed (fallback)
-        if len(entities) == 0:
-            logger.warning("No entities found by NER, trying LLM extraction")
-            llm_service = get_llm_service()
-            llm_entities = llm_service.extract_entities(content)
-            for entity_type, entity_values in llm_entities.items():
-                # Normalize entity type to singular form
-                normalized_type = normalize_entity_type(entity_type)
-                for entity_value in entity_values:
-                    if entity_value:
+                    entity_key = (normalized_type, entity_value.lower().strip())
+                    if entity_key not in entity_set:
+                        entity_set.add(entity_key)
                         entities.append(
                             {
                                 "entity_type": normalized_type,
                                 "entity_value": entity_value,
-                                "confidence": 0.85,  # Slightly lower for LLM
+                                "confidence": 0.9,  # Default confidence for NER
                             }
                         )
+
+        # Always use LLM for better entity extraction (especially for financial entities)
+        # LLM is better at recognizing company names, financial terms, etc.
+        logger.debug("Using LLM for entity extraction to improve accuracy")
+        llm_service = get_llm_service()
+        llm_entities = llm_service.extract_entities(content)
+        for entity_type, entity_values in llm_entities.items():
+            # Normalize entity type to singular form
+            normalized_type = normalize_entity_type(entity_type)
+            for entity_value in entity_values:
+                if entity_value:
+                    entity_key = (normalized_type, entity_value.lower().strip())
+                    # Only add if not already present (LLM results take precedence for companies)
+                    if entity_key not in entity_set:
+                        entity_set.add(entity_key)
+                        entities.append(
+                            {
+                                "entity_type": normalized_type,
+                                "entity_value": entity_value,
+                                "confidence": 0.95,  # Higher confidence for LLM (better accuracy)
+                            }
+                        )
+                    elif normalized_type == "company":
+                        # For companies, prefer LLM results (update existing if found)
+                        for i, e in enumerate(entities):
+                            if (e["entity_type"] == normalized_type and 
+                                e["entity_value"].lower().strip() == entity_value.lower().strip()):
+                                entities[i]["confidence"] = 0.95  # Update confidence
+                                break
 
         state["entities"] = entities
         logger.info(f"Extracted {len(entities)} entities from article")

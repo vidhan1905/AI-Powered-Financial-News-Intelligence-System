@@ -31,15 +31,35 @@ def query_agent(state: AgentState) -> AgentState:
             state["errors"].append("No query provided to query agent")
             return state
 
-        # Extract entities from query
+        # Extract entities from query using both NER and LLM for better accuracy
         ner_service = get_ner_service()
         query_entities_dict = ner_service.extract_entities(query)
         query_entities = []
+        entity_set = set()  # Track unique entities
+        
+        # Add NER entities
         for entity_type, entity_values in query_entities_dict.items():
             # Normalize entity type to singular form
             normalized_type = normalize_entity_type(entity_type)
             for entity_value in entity_values:
-                query_entities.append({"entity_type": normalized_type, "entity_value": entity_value})
+                if entity_value:
+                    entity_key = (normalized_type, entity_value.lower().strip())
+                    if entity_key not in entity_set:
+                        entity_set.add(entity_key)
+                        query_entities.append({"entity_type": normalized_type, "entity_value": entity_value})
+        
+        # Also use LLM for better entity extraction from natural language queries
+        from src.services.llm_service import get_llm_service
+        llm_service = get_llm_service()
+        llm_entities_dict = llm_service.extract_entities(query)
+        for entity_type, entity_values in llm_entities_dict.items():
+            normalized_type = normalize_entity_type(entity_type)
+            for entity_value in entity_values:
+                if entity_value:
+                    entity_key = (normalized_type, entity_value.lower().strip())
+                    if entity_key not in entity_set:
+                        entity_set.add(entity_key)
+                        query_entities.append({"entity_type": normalized_type, "entity_value": entity_value})
 
         state["query_entities"] = query_entities
 
@@ -182,10 +202,12 @@ async def _process_query_async(state: AgentState) -> None:
                     if article.id not in articles_by_id:
                         articles_by_id[article.id] = article
 
-    # Build results with relevance scores
+    # Build results from vector search results (with similarity scores)
+    vector_article_ids = set()
     for article_id, similarity, _ in similar_articles:
         if article_id in articles_by_id:
             article = articles_by_id[article_id]
+            vector_article_ids.add(article_id)
             # Get entities and stock impacts
             entities = await sql_db.get_entities(article_id)
             stock_impacts = await sql_db.get_stock_impacts(article_id)
@@ -199,13 +221,57 @@ async def _process_query_async(state: AgentState) -> None:
                     "timestamp": article.timestamp.isoformat() if article.timestamp else None,
                     "similarity_score": round(similarity, 3),
                     "entities": [
-                        {"type": e.entity_type, "value": e.entity_value} for e in entities
+                        {
+                            "entity_type": e.entity_type,
+                            "entity_value": e.entity_value,
+                            "confidence": e.confidence,
+                        }
+                        for e in entities
                     ],
                     "stock_impacts": [
                         {
-                            "symbol": si.stock_symbol,
+                            "stock_symbol": si.stock_symbol,
                             "confidence": si.confidence,
-                            "type": si.impact_type,
+                            "impact_type": si.impact_type,
+                        }
+                        for si in stock_impacts
+                    ],
+                }
+            )
+    
+    # Also add articles found via entity-based search (not in vector results)
+    # These get a default similarity score based on query type
+    for article_id, article in articles_by_id.items():
+        if article_id not in vector_article_ids:
+            # Get entities and stock impacts
+            entities = await sql_db.get_entities(article_id)
+            stock_impacts = await sql_db.get_stock_impacts(article_id)
+            
+            # Assign similarity score based on query type
+            # Entity-based matches get high scores (0.8-0.9) since they're direct matches
+            default_similarity = 0.85 if query_type in ["company", "sector", "regulator"] else 0.7
+            
+            results.append(
+                {
+                    "article_id": article_id,
+                    "title": article.title,
+                    "content": article.content[:500] + "..." if len(article.content) > 500 else article.content,
+                    "source": article.source,
+                    "timestamp": article.timestamp.isoformat() if article.timestamp else None,
+                    "similarity_score": round(default_similarity, 3),
+                    "entities": [
+                        {
+                            "entity_type": e.entity_type,
+                            "entity_value": e.entity_value,
+                            "confidence": e.confidence,
+                        }
+                        for e in entities
+                    ],
+                    "stock_impacts": [
+                        {
+                            "stock_symbol": si.stock_symbol,
+                            "confidence": si.confidence,
+                            "impact_type": si.impact_type,
                         }
                         for si in stock_impacts
                     ],
