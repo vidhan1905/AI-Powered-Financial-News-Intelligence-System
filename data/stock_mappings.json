@@ -1,0 +1,121 @@
+{
+  "companies": {
+    "HDFC Bank": "HDFCBANK",
+    "HDFC": "HDFCBANK",
+    "ICICI Bank": "ICICIBANK",
+    "ICICI": "ICICIBANK",
+    "State Bank of India": "SBIN",
+    "SBI": "SBIN",
+    "Reliance Industries": "RELIANCE",
+    "Reliance": "RELIANCE",
+    "RIL": "RELIANCE",
+    "Infosys": "INFY",
+    "TCS": "TCS",
+    "Tata Consultancy Services": "TCS",
+    "Wipro": "WIPRO",
+    "Bharti Airtel": "BHARTIARTL",
+    "Airtel": "BHARTIARTL",
+    "ITC": "ITC",
+    "Hindustan Unilever": "HINDUNILVR",
+    "HUL": "HINDUNILVR",
+    "Axis Bank": "AXISBANK",
+    "Kotak Mahindra Bank": "KOTAKBANK",
+    "Kotak Bank": "KOTAKBANK",
+    "Bajaj Finance": "BAJFINANCE",
+    "Asian Paints": "ASIANPAINT",
+    "Titan": "TITAN",
+    "Nestle": "NESTLEIND",
+    "Maruti Suzuki": "MARUTI",
+    "Tata Motors": "TATAMOTORS",
+    "Mahindra & Mahindra": "M&M",
+    "Sun Pharma": "SUNPHARMA",
+    "Dr. Reddy's": "DRREDDY",
+    "Cipla": "CIPLA"
+  },
+  "sectors": {
+    "Banking": [
+      "HDFCBANK",
+      "ICICIBANK",
+      "SBIN",
+      "AXISBANK",
+      "KOTAKBANK",
+      "INDUSINDBK",
+      "PNB",
+      "BANKBARODA"
+    ],
+    "IT": [
+      "TCS",
+      "INFY",
+      "WIPRO",
+      "HCLTECH",
+      "TECHM",
+      "LTIM"
+    ],
+    "Pharma": [
+      "SUNPHARMA",
+      "DRREDDY",
+      "CIPLA",
+      "LUPIN",
+      "AUROPHARMA"
+    ],
+    "Auto": [
+      "MARUTI",
+      "TATAMOTORS",
+      "M&M",
+      "BAJAJ-AUTO",
+      "HEROMOTOCO"
+    ],
+    "Oil": [
+      "RELIANCE",
+      "ONGC",
+      "IOC",
+      "BPCL",
+      "HPCL"
+    ],
+    "Telecom": [
+      "BHARTIARTL",
+      "IDEA"
+    ],
+    "Retail": [
+      "RELIANCE",
+      "DMART"
+    ],
+    "Steel": [
+      "TATASTEEL",
+      "JSWSTEEL",
+      "SAIL"
+    ],
+    "Cement": [
+      "ULTRACEMCO",
+      "SHREECEM",
+      "ACC"
+    ],
+    "Power": [
+      "NTPC",
+      "POWERGRID",
+      "TATAPOWER"
+    ],
+    "FMCG": [
+      "HINDUNILVR",
+      "ITC",
+      "NESTLEIND",
+      "BRITANNIA"
+    ]
+  },
+  "regulators": {
+    "RBI": [
+      "Banking",
+      "Financial Services"
+    ],
+    "SEBI": [
+      "All Sectors"
+    ],
+    "IRDA": [
+      "Insurance"
+    ],
+    "TRAI": [
+      "Telecom"
+    ]
+  }
+}
+
