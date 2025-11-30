@@ -203,11 +203,3 @@ python scripts/benchmark.py
 - **Agent Framework**: LangGraph
 - **Dependency Management**: uv
 
-## License
-
-[Add your license here]
-
-## Contributing
-
-[Add contribution guidelines here]
-
